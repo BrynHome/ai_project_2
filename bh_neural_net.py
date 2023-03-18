@@ -36,15 +36,22 @@ class PositionalEncoding(nn.Module):
     """
 
     def __init__(self, d_model, drop_out=0.1, max_len=5000):
+        """
+
+        :param d_model: dimension of embedding
+        :param drop_out:
+        :param max_len: length of input sequence
+        """
         super(PositionalEncoding, self).__init__()
         self.dropout = nn.Dropout(p=drop_out)
+        self.d_model = d_model
 
         pe = torch.zeros(max_len, d_model)
-        position = torch.arange(0, max_len, dtype=torch.float).unsqueeze(1)
-        div_term = torch.exp(torch.arange(0, d_model, 2).float() * (-math.log(10000.0) / d_model))
-        pe[:, 0::2] = torch.sin(position * div_term)
-        pe[:, 1::2] = torch.cos(position * div_term)
-        pe = pe.unsqueeze(0).transpose(0, 1)
+        for pos in range(max_len):
+            for i in range(0, d_model, 2):
+                pe[pos, i] = math.sin(pos / (10000 ** ((2 * i) / self.d_model)))
+                pe[pos, i + 1] = math.cos(pos / (10000 ** ((2 * (i + 1)) / self.d_model)))
+        pe = pe.unsqueeze(0)
         self.register_buffer('pe', pe)
 
     def forward(self, x):
@@ -53,8 +60,14 @@ class PositionalEncoding(nn.Module):
         :param x: sequence to fed to the position encoder
         :return: sequence
         """
-        x = x + self.pe[:x.size(0), :]
-        return self.dropout(x)
+        # make embeddings relatively larger. This makes the positional
+        # encoding relatively smaller, so the original meaning in the embedding
+        # vector is not lost when added together.
+        x = x * math.sqrt(self.d_model)
+        s_l = x.size(1)
+        x = x + x + torch.autograd.Variable(self.pe[:, :s_l], requires_grad=False)
+        return x
+
 
 class MultiHeadAttention(nn.Module):
     def __init__(self, d_model, n_heads, dropout = 0.1):
@@ -109,6 +122,8 @@ class MultiHeadAttention(nn.Module):
         output = self.out(concat)
 
         return output
+
+    
 class TransformModel(nn.Module):
     """
     Transformer container model. Contains a encoder and decoder
