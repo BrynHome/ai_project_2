@@ -1,0 +1,8 @@
+# virtual environment
+venv/
+env/
+
+# python bytecode cache folder
+__pycache__/
+
+# data
