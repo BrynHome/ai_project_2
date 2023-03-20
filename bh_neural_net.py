@@ -211,6 +211,40 @@ def clone(module, n):
     return nn.ModuleList([copy.deepcopy(module) for i in range(n)])
 
 
+class Encoder(nn.Module):
+    def __init__(self, vocab_size, d_model, n, heads):
+        super().__init__()
+        self.n = n
+        self.embed = embed(vocab_size, d_model)
+        self.positional = PositionalEncoding(d_model)
+        self.layers = clone(EncodeLayer(d_model, heads), n)
+        self.norm = Normalize(d_model)
+
+    def forward(self, src, mask):
+        x = self.embed(src)
+        x = self.pe(x)
+        for i in range(self.n):
+            x = self.layers[i](x, mask)
+        return self.norm(x)
+
+
+class Decoder(nn.Module):
+    def __init__(self, vocab_size, d_model, n, heads):
+        super().__init__()
+        self.n = n
+        self.embed = embed(vocab_size, d_model)
+        self.positional = PositionalEncoding(d_model)
+        self.layers = clone(EncodeLayer(d_model, heads), n)
+        self.norm = Normalize(d_model)
+
+    def forward(self, target, outputs, src_mask, target_mask):
+        x = self.embed(target)
+        x = self.positional(x)
+        for i in range(self.n):
+            x = self.layers[i](x, outputs, src_mask, target_mask)
+        return self.norm(x)
+
+
 class TransformModel(nn.Module):
     """
     Transformer container model. Contains a encoder and decoder
