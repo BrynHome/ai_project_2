@@ -52,7 +52,7 @@ if __name__ == "__main__":
 
     CLASS_LABELS = ["stars", "useful", "funny", "cool"]
     full = read_csv(RAW_DATASET, dtype=COLUMN_TYPES)
-    test = full[full["text"] != ""] # Get all rows with non-empty text fields.
+    full = full[full["text"] != ""] # Get all rows with non-empty text fields.
     print("Splitting dataset into training and test sets...")
     X_train, X_test, y_train, y_test = train_test_split(full["text"], full[CLASS_LABELS], test_size=0.10, random_state=42)
 
