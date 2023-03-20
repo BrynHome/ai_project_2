@@ -1,3 +1,4 @@
+import copy
 import math
 
 import torch
@@ -14,6 +15,7 @@ class embed(nn.Module):
     Using passed network, a lookup for its corresponding embedding
     vector is received. The vectors will be learnt by the model.
     """
+
     def __init__(self, vocab_s, d_model):
         super().__init__()
         self.embed = nn.Embedding(vocab_s, d_model)
@@ -70,7 +72,7 @@ class PositionalEncoding(nn.Module):
 
 
 class MultiHeadAttention(nn.Module):
-    def __init__(self, d_model, n_heads, dropout = 0.1):
+    def __init__(self, d_model, n_heads, dropout=0.1):
         super(MultiHeadAttention, self).__init__()
 
         self.d_model = d_model
@@ -117,13 +119,98 @@ class MultiHeadAttention(nn.Module):
 
         output = torch.matmul(scores, value)
         # concatenate heads and put through final linear layer
-        concat = scores.transpose(1, 2).contiguous().view(batch_s, seq_len_q, self.d_model*self.n_heads)
+        concat = scores.transpose(1, 2).contiguous().view(batch_s, seq_len_q, self.d_model * self.n_heads)
 
         output = self.out(concat)
 
         return output
 
-    
+
+class FeedForward(nn.Module):
+    def __init__(self, d_model, dff=2048, dropout=0.1):
+        super().__init__()
+        self.linear1 = nn.Linear(d_model, dff)
+        self.dropout = nn.Dropout(dropout)
+        self.linear2 = nn.Linear(dff, d_model)
+
+    def forward(self, x):
+        x = self.dropout(nn.functional.relu(self.linear1(x)))
+        x = self.linear2(x)
+        return x
+
+
+class Normalize(nn.Module):
+    def __init__(self, d_model, eps=1e-6):
+        super().__init__()
+        self.size = d_model
+        self.a = nn.Parameter(torch.ones(self.size))
+        self.bias = nn.Parameter(torch.zeros(self.size))
+        self.eps = eps
+
+    def forward(self, x):
+        normalized = self.a * (x - x.mean(dim=-1, keepdim=True)) / (x.std(dim=-1, keepdim=True) + self.eps) + self.bias
+        return normalized
+
+
+class EncodeLayer(nn.Module):
+    """
+    Encoder layer.
+    One multi-head layer
+    One feed-forward layer
+    """
+
+    def __init__(self, d_model, heads, dropout=0.1):
+        super().__init__()
+        self.norm1 = Normalize(d_model)
+        self.norm2 = Normalize(d_model)
+        self.attention = MultiHeadAttention(heads, d_model)
+        self.feed = FeedForward(d_model)
+        self.drop1 = nn.Dropout(dropout)
+        self.drop2 = nn.Dropout(dropout)
+
+    def forward(self, x, mask):
+        x2 = self.norm1(x)
+        x = x + self.drop1(self.attention(x2, x2, x2, mask))
+        x2 = self.norm2(x)
+        x = x + self.drop2(self.feed(x2))
+        return x
+
+
+class DecoderLayer(nn.Module):
+    """
+        Decoder layer.
+        Two multi-head layers
+        One feed-forward layer
+        """
+
+    def __init__(self, d_model, heads, dropout=0.1):
+        super().__init__()
+        self.norm1 = Normalize(d_model)
+        self.norm2 = Normalize(d_model)
+        self.norm3 = Normalize(d_model)
+
+        self.drop1 = nn.Dropout(dropout)
+        self.drop2 = nn.Dropout(dropout)
+        self.drop3 = nn.Dropout(dropout)
+
+        self.attention1 = MultiHeadAttention(heads, d_model)
+        self.attention2 = MultiHeadAttention(heads, d_model)
+        self.feed = FeedForward(d_model).cuda()
+
+    def forward(self, x, outputs, src_mask, target_mask):
+        x2 = self.norm1(x)
+        x = x + self.drop1(self.attention1(x2, x2, x2, target_mask))
+        x2 = self.norm2(x)
+        x = x + self.drop2(self.attention2(x2, outputs, outputs, src_mask))
+        x2 = self.norm3(x)
+        x = x + self.drop3(self.feed(x2))
+        return x
+
+
+def clone(module, n):
+    return nn.ModuleList([copy.deepcopy(module) for i in range(n)])
+
+
 class TransformModel(nn.Module):
     """
     Transformer container model. Contains a encoder and decoder
