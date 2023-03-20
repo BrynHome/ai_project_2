@@ -8,10 +8,6 @@ __pycache__/
 # data
 yelp_dataset.tar
 Dataset_User_Agreement.pdf
-yelp_academic_dataset_business.json
-yelp_academic_dataset_checkin.json
-yelp_academic_dataset_review.json
-yelp_academic_dataset_tip.json
-yelp_academic_dataset_user.json
-out.csv
-clean.csv
+*.csv
+*.json
+
