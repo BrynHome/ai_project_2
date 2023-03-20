@@ -1,0 +1,13 @@
+# virtual environment
+venv/
+env/
+
+# python bytecode cache folder
+__pycache__/
+
+# data
+yelp_dataset.tar
+Dataset_User_Agreement.pdf
+*.csv
+*.json
+
