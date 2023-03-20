@@ -251,5 +251,14 @@ class TransformModel(nn.Module):
 
     """
 
-    def __init__(self, num_classes: int, max_out_len: int, dim: int = 128):
+    def __init__(self, src, target, d_model, n, heads):
         super().__init__()
+        self.encoder = Encoder(src, d_model, n, heads)
+        self.decoder = Decoder(target, d_model, n, heads)
+        self.out = nn.Linear(d_model, target)
+
+    def forward(self, src, target, src_mask, target_mask):
+        encoder_out = self.encoder(src, src_mask)
+        decoder_out = self.decoder(target, encoder_out, src_mask, target_mask)
+        out = self.out(decoder_out)
+        return out
