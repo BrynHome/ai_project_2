@@ -78,5 +78,15 @@ if __name__ == "__main__":
     # Remove non-numeric values
     for label in CLASS_LABELS:
         train = train[to_numeric(train[label], errors='coerce').notnull()]
+    # I am open to better ways of doing this.
+    # but this works.
+    train["cool"] = train["cool"].astype(int)
+    train["useful"] = train["useful"].astype(int)
+    train["funny"] = train["funny"].astype(int)
+    train = train[
+        (train["useful"] >= 0) &
+        (train["cool"] >= 0) &
+        (train["funny"] >= 0)
+    ]
     train.to_csv("training.csv", index=False)
     print("Done.")
