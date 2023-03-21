@@ -16,29 +16,36 @@ Format of record analysis
         tests with skim and no skim should be done
         punctuation is likely not important
 """
-from pandas import DataFrame, read_json, read_csv, concat
+from pandas import DataFrame, read_json, read_csv, concat, to_numeric
 from argparse import ArgumentParser
 from sklearn.model_selection import train_test_split
 from os.path import exists
 from os import remove
+from sys import exit
 
 PARSER = ArgumentParser()
 PARSER.add_argument("filepath", help="The filepath to the raw JSON dataset.")
+PARSER.add_argument("-o","--output", dest="csv_output", default="dataset.csv", help="The filepath to the raw CSV output. Defaults to dataset.csv", required=False)
 ARGS = PARSER.parse_args()
 
-RAW_DATASET = "dataset.csv"
-
 if __name__ == "__main__":
+    if exists(ARGS.csv_output):
+        remove(ARGS.csv_output)
 
-    if exists(RAW_DATASET):
-        remove(RAW_DATASET)
+    try:
+        reader = read_json(ARGS.filepath, lines=True, chunksize=300000)
+    except FileNotFoundError:
+        print(f"Could not open {ARGS.filepath}.  Exiting.")
+        exit()
 
     print("Converting raw JSON dataset to CSV...")
-    reader = read_json(ARGS.filepath, lines=True, chunksize=300000)
-    for chunk in reader:
-        chunk = chunk[["stars", "useful", "funny", "cool", "text"]]
-        chunk.to_csv(RAW_DATASET, mode="a", index=False)
 
+    for chunk in reader:
+        try:
+            chunk = chunk[["stars", "useful", "funny", "cool", "text"]]
+            chunk.to_csv(ARGS.csv_output, mode="a", index=False)
+        except KeyError as e:
+            print(e)
     # I find it a lot easier to
     # process data when it is a 
     # string.
@@ -51,7 +58,11 @@ if __name__ == "__main__":
     }
 
     CLASS_LABELS = ["stars", "useful", "funny", "cool"]
-    full = read_csv(RAW_DATASET, dtype=COLUMN_TYPES)
+    try:
+        full = read_csv(ARGS.csv_output, dtype=COLUMN_TYPES)
+    except FileNotFoundError:
+        print(f"Could not open {ARGS.csv_output}.  Exiting.")
+        exit()
     full = full[full["text"] != ""] # Get all rows with non-empty text fields.
     print("Splitting dataset into training and test sets...")
     X_train, X_test, y_train, y_test = train_test_split(full["text"], full[CLASS_LABELS], test_size=0.10, random_state=42)
@@ -61,19 +72,11 @@ if __name__ == "__main__":
     test: DataFrame = concat([X_test, y_test], axis=1)
     test.to_csv("test.csv", index=False)
 
-    # Create a training sets.
-    training = concat([X_train, y_train], axis=1)
+    # Create a training set.
+    print("Saving training set...")
+    train: DataFrame = concat([X_train, y_train], axis=1)
+    # Remove non-numeric values
     for label in CLASS_LABELS:
-        print(f"Creating/preprocessing training set for label: {label}")
-        # This seemed like the simplest way to 
-        # ensure that the rating column only 
-        # contains numbers 1 through 5.
-        data = training[
-            (training[label] == "1") |
-            (training[label] == "2") |
-            (training[label] == "3") |
-            (training[label] == "4") |
-            (training[label] == "5") 
-            ]
-        data[["text", label]].to_csv(f"training_{label}.csv", index=False)
+        train = train[to_numeric(train[label], errors='coerce').notnull()]
+    train.to_csv("training.csv", index=False)
     print("Done.")
