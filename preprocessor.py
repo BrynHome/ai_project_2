@@ -16,7 +16,7 @@ Format of record analysis
         tests with skim and no skim should be done
         punctuation is likely not important
 """
-from pandas import DataFrame, read_json, read_csv, concat
+from pandas import DataFrame, read_json, read_csv, concat, to_numeric
 from argparse import ArgumentParser
 from sklearn.model_selection import train_test_split
 from os.path import exists
@@ -73,7 +73,10 @@ if __name__ == "__main__":
     test.to_csv("test.csv", index=False)
 
     # Create a training set.
-    print("Saving trainings set...")
+    print("Saving training set...")
     train: DataFrame = concat([X_train, y_train], axis=1)
+    # Remove non-numeric values
+    for label in CLASS_LABELS:
+        train = train[to_numeric(train[label], errors='coerce').notnull()]
     train.to_csv("training.csv", index=False)
     print("Done.")
