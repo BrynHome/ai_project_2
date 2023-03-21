@@ -59,9 +59,8 @@ if __name__ == "__main__":
     test: DataFrame = concat([X_test, y_test], axis=1)
     test.to_csv("test.csv", index=False)
 
-    # Create a training sets.
-    training = concat([X_train, y_train], axis=1)
-    for label in CLASS_LABELS:
-        print(f"Creating/preprocessing training set for label: {label}")
-        training[["text", label]].to_csv(f"training_{label}.csv", index=False)
+    # Create a training set.
+    print("Saving trainings set...")
+    train: DataFrame = concat([X_train, y_train], axis=1)
+    train.to_csv("training.csv", index=False)
     print("Done.")
