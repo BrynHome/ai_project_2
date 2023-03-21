@@ -262,3 +262,8 @@ class TransformModel(nn.Module):
         decoder_out = self.decoder(target, encoder_out, src_mask, target_mask)
         out = self.out(decoder_out)
         return out
+
+d_model = 512
+heads = 8
+n = 6
+vocab = len(EN_TEXT)
