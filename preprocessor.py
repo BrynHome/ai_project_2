@@ -63,15 +63,5 @@ if __name__ == "__main__":
     training = concat([X_train, y_train], axis=1)
     for label in CLASS_LABELS:
         print(f"Creating/preprocessing training set for label: {label}")
-        # This seemed like the simplest way to 
-        # ensure that the rating column only 
-        # contains numbers 1 through 5.
-        data = training[
-            (training[label] == "1") |
-            (training[label] == "2") |
-            (training[label] == "3") |
-            (training[label] == "4") |
-            (training[label] == "5") 
-            ]
-        data[["text", label]].to_csv(f"training_{label}.csv", index=False)
+        training[["text", label]].to_csv(f"training_{label}.csv", index=False)
     print("Done.")
