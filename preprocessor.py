@@ -24,20 +24,18 @@ from os import remove
 
 PARSER = ArgumentParser()
 PARSER.add_argument("filepath", help="The filepath to the raw JSON dataset.")
+PARSER.add_argument("-o","--output", dest="csv_output", default="dataset.csv", help="The filepath to the raw CSV output. Defaults to dataset.csv", required=False)
 ARGS = PARSER.parse_args()
 
-RAW_DATASET = "dataset.csv"
-
 if __name__ == "__main__":
-
-    if exists(RAW_DATASET):
-        remove(RAW_DATASET)
+    if exists(ARGS.csv_output):
+        remove(ARGS.csv_output)
 
     print("Converting raw JSON dataset to CSV...")
     reader = read_json(ARGS.filepath, lines=True, chunksize=300000)
     for chunk in reader:
         chunk = chunk[["stars", "useful", "funny", "cool", "text"]]
-        chunk.to_csv(RAW_DATASET, mode="a", index=False)
+        chunk.to_csv(ARGS.csv_output, mode="a", index=False)
 
     # I find it a lot easier to
     # process data when it is a 
@@ -51,7 +49,7 @@ if __name__ == "__main__":
     }
 
     CLASS_LABELS = ["stars", "useful", "funny", "cool"]
-    full = read_csv(RAW_DATASET, dtype=COLUMN_TYPES)
+    full = read_csv(ARGS.csv_output, dtype=COLUMN_TYPES)
     full = full[full["text"] != ""] # Get all rows with non-empty text fields.
     print("Splitting dataset into training and test sets...")
     X_train, X_test, y_train, y_test = train_test_split(full["text"], full[CLASS_LABELS], test_size=0.10, random_state=42)
