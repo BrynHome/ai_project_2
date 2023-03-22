@@ -46,6 +46,8 @@ def regex_tokenize(text: str):
 def clean_text(text: str):
     # tokenize all ascii words using regex.
     words: list[str] = regex_tokenize(text)
+    # Convert all text to lowercase.
+    words = [word.lower() for word in words]
     # remove stopwords using nltk.corpus.stopwords
     words = [word for word in words if word not in STOPWORDS]
     return " ".join(words)
@@ -94,9 +96,6 @@ if __name__ == "__main__":
     # Create the test set.
     print("Saving test set...")
     test: DataFrame = concat([X_test, y_test], axis=1)
-    # Get all reviews in english language.
-    test["language"] = test["text"].apply(detect_language)
-    test = test[test["language"] == "en"]
     # Remove words with non-ascii characters and stop words.
     test["text"] = test["text"].apply(clean_text)
     test.to_csv("test.csv", index=False)
@@ -108,7 +107,7 @@ if __name__ == "__main__":
     for label in CLASS_LABELS:
         train = train[to_numeric(train[label], errors='coerce').notnull()]
     # I am open to better ways of doing this.
-    # but this works.
+    # but this works. Removes negatives.
     train["cool"] = train["cool"].astype(int)
     train["useful"] = train["useful"].astype(int)
     train["funny"] = train["funny"].astype(int)
@@ -117,10 +116,9 @@ if __name__ == "__main__":
         (train["cool"] >= 0) &
         (train["funny"] >= 0)
     ]
-    # Get all reviews in english language.
-    train["language"] = train["text"].apply(detect_language)
-    train = train[train["language"] == "en"]
-    # Remove words with non-ascii characters and stop words.
+    # Remove words with non-ascii characters, 
+    # convert to lowercase, 
+    # and remove stop words.
     train["text"] = train["text"].apply(clean_text)
     train.to_csv("training.csv", index=False)
     print("Done.")
