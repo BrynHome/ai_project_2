@@ -1,5 +1,5 @@
 import unittest
-from preprocessor import clean_text
+from preprocessor import clean_text, detect_language
 
 class TestTextPreprocessing(unittest.TestCase):
 
@@ -14,6 +14,9 @@ class TestTextPreprocessing(unittest.TestCase):
         filtered = clean_text(text="")
         self.assertEqual(filtered, "")
 
+    def test_detect_language(self):
+        self.assertEqual("en", detect_language("Hello, this is awesome."))
+        self.assertEqual("fr", detect_language("J'adore mon petit poisson."))
 
 if __name__ == '__main__':
     unittest.main()
