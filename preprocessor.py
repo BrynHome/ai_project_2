@@ -1,16 +1,16 @@
 """
 Format of record analysis
 
-    stars: 
+    stars:
         output. to be dropped but kept for training.
-    
-    useful, funny, cool : 
+
+    useful, funny, cool :
         a large majority of these ratings are default not rated, as
         such, only records that have these values should be used for training.
         This will likely end up in poor accuracy for these, as it is very likely a record
         has no rating of these.
 
-    text: 
+    text:
         input. could be skimmed or altered to make input easier?
         words like: 'the', 'a' , 'my', 'it', etc.. are likely unimportant so may be removed
         tests with skim and no skim should be done
@@ -73,7 +73,7 @@ if __name__ == "__main__":
         except KeyError as e:
             print(e)
     # I find it a lot easier to
-    # process data when it is a 
+    # process data when it is a
     # string.
     COLUMN_TYPES = {
         "text": str,
@@ -116,8 +116,8 @@ if __name__ == "__main__":
         (train["cool"] >= 0) &
         (train["funny"] >= 0)
     ]
-    # Remove words with non-ascii characters, 
-    # convert to lowercase, 
+    # Remove words with non-ascii characters,
+    # convert to lowercase,
     # and remove stop words.
     train["text"] = train["text"].apply(clean_text)
     train.to_csv("training.csv", index=False)
