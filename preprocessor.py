@@ -22,13 +22,29 @@ from sklearn.model_selection import train_test_split
 from os.path import exists
 from os import remove
 from sys import exit
+from nltk.corpus import stopwords
+import re
 
 PARSER = ArgumentParser()
 PARSER.add_argument("filepath", help="The filepath to the raw JSON dataset.")
 PARSER.add_argument("-o","--output", dest="csv_output", default="dataset.csv", help="The filepath to the raw CSV output. Defaults to dataset.csv", required=False)
-ARGS = PARSER.parse_args()
+
+STOPWORDS = set(stopwords.words("english"))
+ASCII_WORD = re.compile("[a-zA-Z_]+") 
+
+def regex_tokenize(text: str):
+    return ASCII_WORD.findall(text)
+
+def clean_text(text: str):
+    # tokenize all ascii words using regex.
+    words: list[str] = regex_tokenize(text)
+    # remove stopwords using nltk.corpus.stopwords
+    words = [word for word in words if word not in STOPWORDS]
+    return " ".join(words)
 
 if __name__ == "__main__":
+    ARGS = PARSER.parse_args()
+
     if exists(ARGS.csv_output):
         remove(ARGS.csv_output)
 
