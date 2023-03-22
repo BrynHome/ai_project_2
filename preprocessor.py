@@ -23,6 +23,8 @@ from os.path import exists
 from os import remove
 from sys import exit
 from nltk.corpus import stopwords
+from langdetect import detect
+from numpy import nan
 import re
 
 PARSER = ArgumentParser()
@@ -30,7 +32,13 @@ PARSER.add_argument("filepath", help="The filepath to the raw JSON dataset.")
 PARSER.add_argument("-o","--output", dest="csv_output", default="dataset.csv", help="The filepath to the raw CSV output. Defaults to dataset.csv", required=False)
 
 STOPWORDS = set(stopwords.words("english"))
-ASCII_WORD = re.compile("[a-zA-Z_]+") 
+ASCII_WORD = re.compile("[a-zA-Z_]+")
+
+def detect_language(txt):
+  try:
+    return detect(txt)
+  except:
+    return nan
 
 def regex_tokenize(text: str):
     return ASCII_WORD.findall(text)
@@ -86,6 +94,11 @@ if __name__ == "__main__":
     # Create the test set.
     print("Saving test set...")
     test: DataFrame = concat([X_test, y_test], axis=1)
+    # Get all reviews in english language.
+    test["language"] = test["text"].apply(detect_language)
+    test = test[test["language"] == "en"]
+    # Remove words with non-ascii characters and stop words.
+    test["text"] = test["text"].apply(clean_text)
     test.to_csv("test.csv", index=False)
 
     # Create a training set.
@@ -104,5 +117,10 @@ if __name__ == "__main__":
         (train["cool"] >= 0) &
         (train["funny"] >= 0)
     ]
+    # Get all reviews in english language.
+    train["language"] = train["text"].apply(detect_language)
+    train = train[train["language"] == "en"]
+    # Remove words with non-ascii characters and stop words.
+    train["text"] = train["text"].apply(clean_text)
     train.to_csv("training.csv", index=False)
     print("Done.")
