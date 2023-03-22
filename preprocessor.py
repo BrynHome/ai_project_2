@@ -22,6 +22,7 @@ from sklearn.model_selection import train_test_split
 from os.path import exists
 from os import remove
 from sys import exit
+import nltk
 from nltk.corpus import stopwords
 from langdetect import detect
 from numpy import nan
@@ -30,6 +31,8 @@ import re
 PARSER = ArgumentParser()
 PARSER.add_argument("filepath", help="The filepath to the raw JSON dataset.")
 PARSER.add_argument("-o","--output", dest="csv_output", default="dataset.csv", help="The filepath to the raw CSV output. Defaults to dataset.csv", required=False)
+
+nltk.download('stopwords')
 
 STOPWORDS = set(stopwords.words("english"))
 ASCII_WORD = re.compile("[a-zA-Z_]+")
