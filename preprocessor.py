@@ -1,16 +1,16 @@
 """
 Format of record analysis
 
-    stars: 
+    stars:
         output. to be dropped but kept for training.
-    
-    useful, funny, cool : 
+
+    useful, funny, cool :
         a large majority of these ratings are default not rated, as
         such, only records that have these values should be used for training.
         This will likely end up in poor accuracy for these, as it is very likely a record
         has no rating of these.
 
-    text: 
+    text:
         input. could be skimmed or altered to make input easier?
         words like: 'the', 'a' , 'my', 'it', etc.. are likely unimportant so may be removed
         tests with skim and no skim should be done
@@ -22,13 +22,42 @@ from sklearn.model_selection import train_test_split
 from os.path import exists
 from os import remove
 from sys import exit
+import nltk
+from nltk.corpus import stopwords
+from langdetect import detect
+from numpy import nan
+import re
 
 PARSER = ArgumentParser()
 PARSER.add_argument("filepath", help="The filepath to the raw JSON dataset.")
 PARSER.add_argument("-o","--output", dest="csv_output", default="dataset.csv", help="The filepath to the raw CSV output. Defaults to dataset.csv", required=False)
-ARGS = PARSER.parse_args()
+
+nltk.download('stopwords')
+
+STOPWORDS = set(stopwords.words("english"))
+ASCII_WORD = re.compile("[a-zA-Z_]+")
+
+def detect_language(txt):
+  try:
+    return detect(txt)
+  except:
+    return nan
+
+def regex_tokenize(text: str):
+    return ASCII_WORD.findall(text)
+
+def clean_text(text: str):
+    # tokenize all ascii words using regex.
+    words: list[str] = regex_tokenize(text)
+    # Convert all text to lowercase.
+    words = [word.lower() for word in words]
+    # remove stopwords using nltk.corpus.stopwords
+    words = [word for word in words if word not in STOPWORDS]
+    return " ".join(words)
 
 if __name__ == "__main__":
+    ARGS = PARSER.parse_args()
+
     if exists(ARGS.csv_output):
         remove(ARGS.csv_output)
 
@@ -47,7 +76,7 @@ if __name__ == "__main__":
         except KeyError as e:
             print(e)
     # I find it a lot easier to
-    # process data when it is a 
+    # process data when it is a
     # string.
     COLUMN_TYPES = {
         "text": str,
@@ -70,6 +99,8 @@ if __name__ == "__main__":
     # Create the test set.
     print("Saving test set...")
     test: DataFrame = concat([X_test, y_test], axis=1)
+    # Remove words with non-ascii characters and stop words.
+    test["text"] = test["text"].apply(clean_text)
     test.to_csv("test.csv", index=False)
 
     # Create a training set.
@@ -79,7 +110,7 @@ if __name__ == "__main__":
     for label in CLASS_LABELS:
         train = train[to_numeric(train[label], errors='coerce').notnull()]
     # I am open to better ways of doing this.
-    # but this works.
+    # but this works. Removes negatives.
     train["cool"] = train["cool"].astype(int)
     train["useful"] = train["useful"].astype(int)
     train["funny"] = train["funny"].astype(int)
@@ -88,5 +119,9 @@ if __name__ == "__main__":
         (train["cool"] >= 0) &
         (train["funny"] >= 0)
     ]
+    # Remove words with non-ascii characters,
+    # convert to lowercase,
+    # and remove stop words.
+    train["text"] = train["text"].apply(clean_text)
     train.to_csv("training.csv", index=False)
     print("Done.")
