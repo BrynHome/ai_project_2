@@ -9,12 +9,12 @@ PARSER.add_argument("filepath", help="The filepath to the training data.")
 PARSER.add_argument("-o", "--output", help="The output filename. Output filename is training.csv by default.", default="training.csv")
 
 VECTORIZER_PATH = "./vectorizer.joblib"
+TRANSFORMER_PATH = "./transformer.joblib"
 
 ARGS = PARSER.parse_args()
 
 if __name__ == "__main__":
-        
-    # Word vectorizer
+
     vectorizer = CountVectorizer(max_features=100)
     transformer = TfidfTransformer()
 
@@ -26,6 +26,8 @@ if __name__ == "__main__":
     
     transformer = transformer.fit(counts)
     tfidf_matrix = transformer.transform(counts)
+
+    dump(transformer, TRANSFORMER_PATH)
 
     labels = transformer.get_feature_names_out()
 
