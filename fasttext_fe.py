@@ -21,7 +21,7 @@ if __name__ == "__main__":
     count = 0
 
     # 1. For each training sample, convert 'text' into a list of tokens.
-    # 2. For each word in the list of tokens, pass the word into the word2vec model to get the word vector for that word.
+    # 2. For each word in the list of tokens, pass the word into the fast text model to get the word vector for that word.
     # 3. Compute the mean of all the word vectors to create a single vector which represents the original text.
     # 4. This word vector becomes the column values for the sample.
     for batch in training_batches:
