@@ -11,3 +11,7 @@ Dataset_User_Agreement.pdf
 *.csv
 *.json
 *.joblib
+*.model
+*.npy
+*.bin
+*.gz
