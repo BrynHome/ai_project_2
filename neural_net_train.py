@@ -69,7 +69,7 @@ def train(model, train_dl, val_dl, learn_rate, epochs):
 
             if best_val_loss > total_loss_val:
                 best_val_loss = total_loss_val
-                torch.save(model, f"best_model.pt")
+                torch.save(model, f"bh_model.pt")
                 print("Saved model")
                 early_stopping_threshold_count = 0
             else:
