@@ -24,27 +24,32 @@ from os import remove
 from sys import exit
 import nltk
 from nltk.corpus import stopwords
-from langdetect import detect
-from numpy import nan
+from imblearn.under_sampling import RandomUnderSampler
 import re
+from time import perf_counter
 
 PARSER = ArgumentParser()
 PARSER.add_argument("filepath", help="The filepath to the raw JSON dataset.")
 PARSER.add_argument("-o","--output", dest="csv_output", default="dataset.csv", help="The filepath to the raw CSV output. Defaults to dataset.csv", required=False)
 
-nltk.download('stopwords')
-
 STOPWORDS = set(stopwords.words("english"))
 ASCII_WORD = re.compile("[a-zA-Z_]+")
 
-def detect_language(txt):
-  try:
-    return detect(txt)
-  except:
-    return nan
+# I find it a lot easier to
+# process data when it is a
+# string.
+COLUMN_TYPES = {
+        "text": str,
+        "useful": str,
+        "funny": str,
+        "cool": str,
+        "stars": str
+    }
+
 
 def regex_tokenize(text: str):
     return ASCII_WORD.findall(text)
+
 
 def clean_text(text: str):
     # tokenize all ascii words using regex.
@@ -55,57 +60,67 @@ def clean_text(text: str):
     words = [word for word in words if word not in STOPWORDS]
     return " ".join(words)
 
+
+def convert_json_to_csv(infile: str, outfile: str) -> None:
+    try:
+        reader = read_json(infile, lines=True, chunksize=300000)
+    except FileNotFoundError:
+        print(f"Could not open {infile}.  Exiting.")
+        exit()
+    print("Converting raw JSON dataset to CSV...")
+    for chunk in reader:
+        try:
+            chunk = chunk[["stars", "useful", "funny", "cool", "text"]]
+            chunk.to_csv(outfile, mode="a", index=False)
+        except KeyError as e:
+            print(e)
+
+
+def undersample(X, y) -> DataFrame:
+    sampler = RandomUnderSampler(random_state=42)
+    X_sampled, y_sampled = sampler.fit_resample(X, y)
+    return concat([X_sampled, y_sampled], axis=1)
+
+
+def make_train_test_sets(dataset: DataFrame) -> tuple[DataFrame, DataFrame]:
+    X_train, X_test, y_train, y_test = train_test_split(dataset[["text", "funny", "useful", "cool"]], dataset[["stars"]], test_size=0.10, random_state=42)
+    train: DataFrame = concat([X_train, y_train], axis=1)
+    test: DataFrame = concat([X_test, y_test], axis=1)
+    return (train, test)
+
+
 if __name__ == "__main__":
+
+    nltk.download('stopwords')
+    START = perf_counter()
     ARGS = PARSER.parse_args()
+    CLASS_LABELS = ["stars", "useful", "funny", "cool"]
 
     if exists(ARGS.csv_output):
         remove(ARGS.csv_output)
 
-    try:
-        reader = read_json(ARGS.filepath, lines=True, chunksize=300000)
-    except FileNotFoundError:
-        print(f"Could not open {ARGS.filepath}.  Exiting.")
-        exit()
+    convert_json_to_csv(infile=ARGS.filepath, outfile=ARGS.csv_output)
 
-    print("Converting raw JSON dataset to CSV...")
-
-    for chunk in reader:
-        try:
-            chunk = chunk[["stars", "useful", "funny", "cool", "text"]]
-            chunk.to_csv(ARGS.csv_output, mode="a", index=False)
-        except KeyError as e:
-            print(e)
-    # I find it a lot easier to
-    # process data when it is a
-    # string.
-    COLUMN_TYPES = {
-        "text": str,
-        "useful": str,
-        "funny": str,
-        "cool": str,
-        "stars": str
-    }
-
-    CLASS_LABELS = ["stars", "useful", "funny", "cool"]
+    print("Reading CSV dataset...")
     try:
         full = read_csv(ARGS.csv_output, dtype=COLUMN_TYPES)
     except FileNotFoundError:
         print(f"Could not open {ARGS.csv_output}.  Exiting.")
         exit()
-    full = full[full["text"] != ""] # Get all rows with non-empty text fields.
-    print("Splitting dataset into training and test sets...")
-    X_train, X_test, y_train, y_test = train_test_split(full["text"], full[CLASS_LABELS], test_size=0.10, random_state=42)
 
-    # Create the test set.
+    print("Preprocessing raw CSV dataset...")
+    full = full[full["text"] != ""] # Get all rows with non-empty text fields.
+    full.dropna(inplace=True) # Drop all null rows.
+    full.drop_duplicates(inplace=True) # Drop all duplicates
+    full["text"] = full["text"].apply(clean_text) # Clean all the text data at once.
+
+    print("Splitting preprocessed dataset into training and test sets...")
+    train, test = make_train_test_sets(full)
+
     print("Saving test set...")
-    test: DataFrame = concat([X_test, y_test], axis=1)
-    # Remove words with non-ascii characters and stop words.
-    test["text"] = test["text"].apply(clean_text)
     test.to_csv("test.csv", index=False)
 
-    # Create a training set.
-    print("Saving training set...")
-    train: DataFrame = concat([X_train, y_train], axis=1)
+    print("Preprocessing training set...")
     # Remove non-numeric values
     for label in CLASS_LABELS:
         train = train[to_numeric(train[label], errors='coerce').notnull()]
@@ -119,9 +134,13 @@ if __name__ == "__main__":
         (train["cool"] >= 0) &
         (train["funny"] >= 0)
     ]
-    # Remove words with non-ascii characters,
-    # convert to lowercase,
-    # and remove stop words.
-    train["text"] = train["text"].apply(clean_text)
+
+    print("Undersampling training set to balance classes...")
+    train = undersample(train[["text", "useful", "cool", "funny"]], train[["stars"]])
+
+    print("Saving training set...")
     train.to_csv("training.csv", index=False)
+    END = perf_counter()
+    TOTAL = END-START
     print("Done.")
+    print(f"Took {TOTAL/60} minutes")
