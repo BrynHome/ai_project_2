@@ -3,7 +3,9 @@ from argparse import ArgumentParser
 from sklearn.feature_extraction.text import CountVectorizer, TfidfTransformer
 from joblib import dump
 from numpy import uint8, uint16
-from os import exists, remove
+from os.path import exists
+from os import remove
+
 
 PARSER = ArgumentParser()
 PARSER.add_argument("filepath", help="The filepath to the training data.")
