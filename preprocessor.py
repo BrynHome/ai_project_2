@@ -29,6 +29,8 @@ from time import perf_counter
 PARSER = ArgumentParser()
 PARSER.add_argument("filepath", help="The filepath to the raw CSV dataset.")
 
+TEST_PATH = "data/test.csv"
+TRAIN_PATH = "data/training.csv"
 
 STOPWORDS = set(stopwords.words("english"))
 ASCII_WORD = re.compile("[a-zA-Z_]+")
@@ -110,13 +112,13 @@ if __name__ == "__main__":
     train, test = make_train_test_sets(full)
 
     print("Saving test set...")
-    test.to_csv("test.csv", index=False)
+    test.to_csv(TEST_PATH, index=False)
 
     print("Undersampling training set to balance classes...")
     train = undersample(train[["text", "useful", "cool", "funny"]], train[["stars"]])
 
     print("Saving training set...")
-    train.to_csv("training.csv", index=False)
+    train.to_csv(TRAIN_PATH, index=False)
     END = perf_counter()
     TOTAL = END-START
     print("Done.")
