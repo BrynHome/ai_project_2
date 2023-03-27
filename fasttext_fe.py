@@ -1,11 +1,13 @@
 from pandas import read_csv, concat, DataFrame
 import numpy as np
 from gensim.models.fasttext import load_facebook_model
+import nltk
 from nltk.tokenize import word_tokenize
 from argparse import ArgumentParser
 from os.path import exists
 from os import remove
 
+nltk.download('punkt')
 
 PARSER = ArgumentParser()
 PARSER.add_argument("filepath", help="The filepath to the training data.")
