@@ -9,7 +9,7 @@ nltk.download('punkt')
 
 PARSER = ArgumentParser()
 PARSER.add_argument("filepath", help="The filepath to the training data.")
-PARSER.add_argument("-o", "--output", help="The output filename. Output filename is training.csv by default.", default="training.csv")
+PARSER.add_argument("-o", "--output", help="The output filename. Output filename is training.csv by default.", default="ft-training.csv")
 
 WORD_VECTOR_SIZE = 25
 CLASS_LABELS = ["stars", "funny", "useful", "cool"]
