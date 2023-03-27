@@ -8,7 +8,7 @@ from sys import exit
 
 PARSER = ArgumentParser()
 PARSER.add_argument("filepath", help="The filepath to the raw JSON dataset.")
-PARSER.add_argument("-o","--output", dest="csv_output", default="dataset.csv", help="The filepath to the raw CSV output. Defaults to dataset.csv", required=False)
+PARSER.add_argument("-o","--output", dest="csv_output", default="data/dataset.csv", help="The filepath to the raw CSV output. Defaults to data/dataset.csv", required=False)
 
 
 def convert_json_to_csv(infile: str, outfile: str) -> None:
