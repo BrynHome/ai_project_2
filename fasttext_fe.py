@@ -3,21 +3,27 @@ import numpy as np
 from gensim.models.fasttext import load_facebook_model
 from nltk.tokenize import word_tokenize
 from argparse import ArgumentParser
+from os.path import exists
+from os import remove
 
 
 PARSER = ArgumentParser()
 PARSER.add_argument("filepath", help="The filepath to the training data.")
-PARSER.add_argument("-o", "--output", help="The output filename. Output filename is training.csv by default.", default="training.csv")
+PARSER.add_argument("-o", "--output", help="The output filename. Output filename is output.csv by default.", default="data/output.csv")
 
 WORD_VECTOR_SIZE = 25
 CLASS_LABELS = ["stars", "funny", "useful", "cool"]
+FB_MODEL_PATH = "models/cc.en.25.bin"
 
 if __name__ == "__main__":
 
     ARGS = PARSER.parse_args()
 
+    if exists(ARGS.output):
+        remove(ARGS.output)
+
     training_batches = read_csv(ARGS.filepath, chunksize=100000, dtype={"stars": np.float64, "funny": np.float64, "useful": np.float64, "cool": np.float64, "text": str}, encoding='utf8')
-    model = load_facebook_model("cc.en.25.bin")
+    model = load_facebook_model(FB_MODEL_PATH)
     count = 0
 
     # 1. For each training sample, convert 'text' into a list of tokens.

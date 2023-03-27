@@ -16,11 +16,9 @@ Format of record analysis
         tests with skim and no skim should be done
         punctuation is likely not important
 """
-from pandas import DataFrame, read_json, read_csv, concat, to_numeric
+from pandas import DataFrame, read_csv, concat, to_numeric
 from argparse import ArgumentParser
 from sklearn.model_selection import train_test_split
-from os.path import exists
-from os import remove
 from sys import exit
 import nltk
 from nltk.corpus import stopwords
@@ -29,8 +27,10 @@ import re
 from time import perf_counter
 
 PARSER = ArgumentParser()
-PARSER.add_argument("filepath", help="The filepath to the raw JSON dataset.")
-PARSER.add_argument("-o","--output", dest="csv_output", default="dataset.csv", help="The filepath to the raw CSV output. Defaults to dataset.csv", required=False)
+PARSER.add_argument("filepath", help="The filepath to the raw CSV dataset.")
+
+TEST_PATH = "data/test.csv"
+TRAIN_PATH = "data/training.csv"
 
 STOPWORDS = set(stopwords.words("english"))
 ASCII_WORD = re.compile("[a-zA-Z_]+")
@@ -61,21 +61,6 @@ def clean_text(text: str):
     return " ".join(words)
 
 
-def convert_json_to_csv(infile: str, outfile: str) -> None:
-    try:
-        reader = read_json(infile, lines=True, chunksize=300000)
-    except FileNotFoundError:
-        print(f"Could not open {infile}.  Exiting.")
-        exit()
-    print("Converting raw JSON dataset to CSV...")
-    for chunk in reader:
-        try:
-            chunk = chunk[["stars", "useful", "funny", "cool", "text"]]
-            chunk.to_csv(outfile, mode="a", index=False)
-        except KeyError as e:
-            print(e)
-
-
 def undersample(X, y) -> DataFrame:
     sampler = RandomUnderSampler(random_state=42)
     X_sampled, y_sampled = sampler.fit_resample(X, y)
@@ -91,55 +76,49 @@ def make_train_test_sets(dataset: DataFrame) -> tuple[DataFrame, DataFrame]:
 
 if __name__ == "__main__":
 
-    nltk.download('stopwords')
-    START = perf_counter()
     ARGS = PARSER.parse_args()
+    START = perf_counter()
+    nltk.download('stopwords')
     CLASS_LABELS = ["stars", "useful", "funny", "cool"]
 
-    if exists(ARGS.csv_output):
-        remove(ARGS.csv_output)
-
-    convert_json_to_csv(infile=ARGS.filepath, outfile=ARGS.csv_output)
-
-    print("Reading CSV dataset...")
+    print("Reading dataset...")
     try:
-        full = read_csv(ARGS.csv_output, dtype=COLUMN_TYPES)
+        full = read_csv(ARGS.filepath, dtype=COLUMN_TYPES)
     except FileNotFoundError:
-        print(f"Could not open {ARGS.csv_output}.  Exiting.")
+        print(f"Could not open {ARGS.filepath}.  Exiting.")
         exit()
 
-    print("Preprocessing raw CSV dataset...")
+    print("Preprocessing dataset...")
     full = full[full["text"] != ""] # Get all rows with non-empty text fields.
     full.dropna(inplace=True) # Drop all null rows.
     full.drop_duplicates(inplace=True) # Drop all duplicates
     full["text"] = full["text"].apply(clean_text) # Clean all the text data at once.
 
+    # Remove non-numeric values
+    for label in CLASS_LABELS:
+        full = full[to_numeric(full[label], errors='coerce').notnull()]
+    # I am open to better ways of doing this.
+    # but this works. Removes negatives.
+    full["cool"] = full["cool"].astype(int)
+    full["useful"] = full["useful"].astype(int)
+    full["funny"] = full["funny"].astype(int)
+    full = full[
+        (full["useful"] >= 0) &
+        (full["cool"] >= 0) &
+        (full["funny"] >= 0)
+    ]
+
     print("Splitting preprocessed dataset into training and test sets...")
     train, test = make_train_test_sets(full)
 
     print("Saving test set...")
-    test.to_csv("test.csv", index=False)
-
-    print("Preprocessing training set...")
-    # Remove non-numeric values
-    for label in CLASS_LABELS:
-        train = train[to_numeric(train[label], errors='coerce').notnull()]
-    # I am open to better ways of doing this.
-    # but this works. Removes negatives.
-    train["cool"] = train["cool"].astype(int)
-    train["useful"] = train["useful"].astype(int)
-    train["funny"] = train["funny"].astype(int)
-    train = train[
-        (train["useful"] >= 0) &
-        (train["cool"] >= 0) &
-        (train["funny"] >= 0)
-    ]
+    test.to_csv(TEST_PATH, index=False)
 
     print("Undersampling training set to balance classes...")
     train = undersample(train[["text", "useful", "cool", "funny"]], train[["stars"]])
 
     print("Saving training set...")
-    train.to_csv("training.csv", index=False)
+    train.to_csv(TRAIN_PATH, index=False)
     END = perf_counter()
     TOTAL = END-START
     print("Done.")

@@ -1,4 +1,5 @@
 from argparse import ArgumentParser
+from sw import sw_train, sw_predict
 
 PARSER = ArgumentParser()
 PARSER.add_argument("file", help="The path to the dataset JSON file.")
@@ -21,6 +22,16 @@ if __name__ == '__main__':
     # TODO validate 'file' argument
 
     if ARGS.train:
-        print("TODO: Run training code.")
+        if ARGS.probabilistic:
+            pass
+        if ARGS.neural:
+            pass
+        if ARGS.other:
+            sw_train(ARGS.file)
     elif ARGS.inference:
-        print("TODO: Run inference code.")
+        if ARGS.probabilistic:
+            pass
+        if ARGS.neural:
+            pass
+        if ARGS.other:
+            sw_predict(ARGS.file)
