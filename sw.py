@@ -2,11 +2,11 @@ import pandas
 from joblib import load, dump
 from sklearn.model_selection import GridSearchCV
 from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
-from sklearn.metrics import mean_squared_error, classification_report
+from sklearn.metrics import mean_squared_error, classification_report, mean_absolute_error, mean_squared_log_error
 
 
-MODEL_FILE_PREFIX_CLF = "./sw_clf_"
-MODEL_FILE_PREFIX_RGR = "./sw_rgr_"
+MODEL_FILE_PREFIX_CLF = "./models/sw_clf_"
+MODEL_FILE_PREFIX_RGR = "./models/sw_rgr_"
 REGRESSION_LABELS = ["funny", "useful", "cool"]
 CLASSIFICATION_LABELS = ["stars"]
 FEATURE_LABELS = [f"x{i+1}" for i in range(0, 25)]
@@ -80,5 +80,6 @@ def sw_predict(filepath: str):
         model: DecisionTreeRegressor = load(f"{MODEL_FILE_PREFIX_RGR}{label}.joblib")
         y_pred = model.predict(test[FEATURE_LABELS])
         print(f"Label: {label}")
-        print(f"MSE: {mean_squared_error(y_pred=y_pred, y_true=test[label])}")
-
+        print(f"Mean Squared Error - MSE: {mean_squared_error(y_pred=y_pred, y_true=test[label])}")
+        print(f"Mean Absolute Error - MAE: {mean_absolute_error(y_pred=y_pred, y_true=test[label])}")
+        print(f"Mean Squared Log Error - MSLE: {mean_squared_log_error(y_pred=y_pred, y_true=test[label])}")
