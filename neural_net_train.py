@@ -1,3 +1,4 @@
+import numpy as np
 import pandas as pd
 import torch
 import torch.nn as nn
@@ -6,6 +7,55 @@ from tqdm import tqdm
 from transformers import AutoTokenizer
 from bh_neural_net_simple import Dataset, Classify
 from sklearn.model_selection import train_test_split
+import tensorflow
+from transformers import TFRobertaModel
+import warnings
+warnings.filterwarnings("ignore")
+
+
+def encode(texts, tokenizer):
+    l = len(texts)
+    in_ids = np.ones((l, 256), dtype='int32')
+    atn = np.zeros((l, 256), dtype='int32')
+    token_t_ids = np.zeros((l, 256), dtype='int32')
+
+    for t, text in enumerate(texts):
+        token = tokenizer.tokenize(text, padding=True, truncation=True)
+        encoded_token = tokenizer.convert_tokens_to_ids(token[:(256 - 2)])
+        in_len = len(encoded_token) + 2
+        if in_len >= 256:
+            in_len = 256
+        in_ids[t, :in_len] = np.asarray([0] + encoded_token + [2], dtype='int32')
+        atn[t, : in_len] = 1
+
+    return {
+        'input_word_ids': in_ids,
+        'input_mask': atn,
+        'input_type_ids': token_t_ids
+    }
+
+
+def model_make(cat, strategy):
+    max = 256
+    with strategy.scope():
+        input_word_ids = tensorflow.keras.Input((max,), name='input_word_ids', dtype=tensorflow.int32)
+        input_mask = tensorflow.keras.Input((max,), name='input_mask', dtype=tensorflow.int32)
+        input_type_ids = tensorflow.keras.Input((max,), name='input_type_ids', dtype=tensorflow.int32)
+
+        r_model = TFRobertaModel.from_pretrained('roberta-base')
+        r_model_2 = r_model(input_word_ids, attention_mask=input_mask, token_type_ids=input_type_ids)
+        r_model_2 = r_model_2[0]
+
+        r_model_2 = tensorflow.keras.layers.Dropout(0.1)(r_model_2)
+        r_model_2 = tensorflow.keras.layers.Flatten()(r_model_2)
+        r_model_2 = tensorflow.keras.layers.Dense(256, 'relu')(r_model_2)
+        r_model_2 = tensorflow.keras.layers.Dense(cat, 'softmax')(r_model_2)
+
+        r_model_3 = tensorflow.keras.Model(inputs=[input_word_ids, input_mask, input_type_ids], outputs=r_model_2)
+        r_model_3.compile(tensorflow.keras.optimizers.Adam(1e-5),
+                          'sparse_categorical_crossentropy',
+                          metrics=['accuracy'])
+        return r_model_3
 
 
 def train(model, train_dl, val_dl, learn_rate, epochs):
@@ -81,14 +131,41 @@ def train(model, train_dl, val_dl, learn_rate, epochs):
 
 
 if __name__ == "__main__":
-    train_df = pd.read_csv("training.csv")
+    try:
+        # TPU detection. No parameters necessary if TPU_NAME environment variable is set (always set in Kaggle)
+        tpu = tensorflow.distribute.cluster_resolver.TPUClusterResolver()
+        tensorflow.config.experimental_connect_to_cluster(tpu)
+        tensorflow.tpu.experimental.initialize_tpu_system(tpu)
+        strategy = tensorflow.distribute.experimental.TPUStrategy(tpu)
+        print('Running on TPU ', tpu.master())
+    except ValueError:
+        # Default distribution strategy in Tensorflow. Works on CPU and single GPU.
+        strategy = tensorflow.distribute.get_strategy()
+
+    print('Number of replicas:', strategy.num_replicas_in_sync)
+    print("Reading dataset...")
+    train_df = pd.read_csv("data/training.csv")
+    n = len(train_df['stars'].unique())
+    train_df = train_df.dropna()
     train_df, val_df = train_test_split(train_df, test_size=0.2, random_state=42)
+    x_train = train_df[['text']].values.reshape(-1)
+    y_train = train_df[['stars']].values.reshape(-1)
+    x_val = val_df[['text']].values.reshape(-1)
+    y_val = val_df[['stars']].values.reshape(-1)
+    print("Grabbing Tokenizer...")
     tokenizer = AutoTokenizer.from_pretrained("roberta-base")
 
-    train_dl = DataLoader(Dataset(train_df, tokenizer), batch_size=8, shuffle=True, num_workers=0)
-    val_dl = DataLoader(Dataset(val_df, tokenizer), batch_size=8, num_workers=0)
-    model = Classify()
+    print("Creating Dataloaders...")
+    x_train = encode(x_train, tokenizer)
+    x_val = encode(x_val, tokenizer)
+    y_train = np.asarray(y_train, dtype='int32')
+    y_val = np.asarray(y_val, dtype='int32')
 
-    learn_rate = 1e-6
-    epochs = 4
-    train(model, train_dl, val_dl, learn_rate, epochs)
+    print("Making model...")
+    model = model_make(n, strategy)
+
+    print("Training....")
+    with strategy.scope():
+        h = model.fit(x_train, y_train, 8 * strategy.num_replicas_in_sync, epochs=3, verbose=1,
+                      validation_data=(x_val, y_val))
+        model.save('data/bh_model')

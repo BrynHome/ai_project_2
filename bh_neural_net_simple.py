@@ -4,7 +4,7 @@ from transformers import RobertaModel
 
 
 class Dataset(torch.utils.data.Dataset):
-    def __init__(self, data, tokenizer, seq_len=1500):
+    def __init__(self, data, tokenizer, seq_len=512):
         self.seq_len = seq_len
         self.tokenizer = tokenizer
         texts = data.text.values.tolist()
