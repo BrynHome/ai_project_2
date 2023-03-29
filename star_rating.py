@@ -1,4 +1,5 @@
 from argparse import ArgumentParser
+from me_bayesian import bayesian_train
 from sw import sw_train, sw_predict
 
 PARSER = ArgumentParser()
@@ -23,7 +24,7 @@ if __name__ == '__main__':
 
     if ARGS.train:
         if ARGS.probabilistic:
-            pass
+            bayesian_train(ARGS.file)
         if ARGS.neural:
             pass
         if ARGS.other:
