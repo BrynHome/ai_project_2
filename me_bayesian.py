@@ -3,6 +3,7 @@ import pandas
 from sklearn.model_selection import GridSearchCV
 from sklearn.linear_model import BayesianRidge
 from sklearn.naive_bayes import GaussianNB
+from sklearn.metrics import mean_squared_error, classification_report, mean_absolute_error, mean_squared_log_error
 
 MODEL_FILE_PREFIX_CLF = "./models/me_clf_"
 MODEL_FILE_PREFIX_RGR = "./models/me_rgr_"
@@ -67,3 +68,29 @@ def bayesian_train(filepath: str):
         rgr = rgr.fit(X=training.drop(TARGET_LABELS, axis=1), y=training[target])
         print(f"Saving model to {MODEL_FILE_PREFIX_RGR}{target}.joblib")
         dump(rgr, f"{MODEL_FILE_PREFIX_RGR}{target}.joblib")
+
+def bayesian_predict(filepath: str):
+    print("--- Predicting Probabalistic Naive Bayes Model ----")
+    
+    print("1. Loading training data...")
+    test = pandas.read_csv(filepath)
+    test.dropna(inplace=True)
+    print(f"Loading test set...")
+    test = pandas.read_csv(filepath)
+    test.dropna(inplace=True)
+    print(f"Classification predictions...")
+    for label in CLASSIFICATION_LABELS:
+        clf: GaussianNB = load(f"{MODEL_FILE_PREFIX_CLF}{label}.joblib")
+        y_pred = clf.predict(test.drop(TARGET_LABELS, axis=1))
+        print(f"Label: {label}")
+        print(f"Classification Report:\n{classification_report(y_pred=y_pred, y_true=test[label])}")
+    print("")
+
+    print(f"Regression predictions...")
+    for label in REGRESSION_LABELS:
+        rgr: BayesianRidge = load(f"{MODEL_FILE_PREFIX_RGR}{label}.joblib")
+        y_pred = rgr.predict(test.drop(TARGET_LABELS, axis=1))
+        print(f"Label: {label}")
+        print(f"Mean Squared Error - MSE: {mean_squared_error(y_pred=y_pred, y_true=test[label])}")
+        print(f"Mean Absolute Error - MAE: {mean_absolute_error(y_pred=y_pred, y_true=test[label])}")
+        print(f"Mean Squared Log Error - MSLE: {mean_squared_log_error(y_pred=y_pred, y_true=test[label])}")
