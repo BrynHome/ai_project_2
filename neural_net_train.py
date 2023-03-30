@@ -1,17 +1,10 @@
 import numpy
-import pandas as pd
-import torch
-import torch.nn as nn
-import transformers
-from tqdm import tqdm
-from transformers import AutoTokenizer, AutoModelForSequenceClassification, TrainingArguments, Trainer
+from transformers import AutoTokenizer, AutoModelForSequenceClassification, DataCollatorWithPadding, TrainingArguments, Trainer
 from sklearn import metrics
 from datasets import load_dataset
 
-
 def pre(text):
     return tokenizer(text['text'], truncation=True, padding=True)
-
 
 def met(pred):
     predict, labels = pred
@@ -27,16 +20,15 @@ def met(pred):
         "F1": f1
     }
 
-
 if __name__ == "__main__":
 
     train_df = load_dataset("csv", data_files="data/neural_train.csv")
     train_df = train_df["train"]
-    train_df = train_df.remove_columns(["Unnamed: 0", "useful", "cool", "funny"])
+    train_df = train_df.remove_columns(["useful", "cool", "funny"])
     train_df = train_df.train_test_split(test_size=0.2)
     tokenizer = AutoTokenizer.from_pretrained("distilbert-base-uncased")
     token_train = train_df.map(pre, batched=True)
-    dc = transformers.DataCollatorWithPadding(tokenizer=tokenizer)
+    dc = DataCollatorWithPadding(tokenizer=tokenizer)
     id2label = {0: "One", 1: "Two", 2: "Three", 3: "Four", 4: "Five"}
     label2id = {"One": 0, "Two": 1, "Three": 2, "Four": 3, "Five": 4}
     model = AutoModelForSequenceClassification.from_pretrained("distilbert-base-uncased", num_labels=5,
