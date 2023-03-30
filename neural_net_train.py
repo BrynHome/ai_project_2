@@ -10,7 +10,7 @@ from datasets import load_dataset
 
 
 def pre(text):
-    return tokenizer(text['text'], truncation=True)
+    return tokenizer(text['text'], truncation=True, padding=True)
 
 
 def met(pred):
@@ -30,12 +30,9 @@ def met(pred):
 
 if __name__ == "__main__":
 
-    train_df = load_dataset("csv", data_files="data/training.csv")
+    train_df = load_dataset("csv", data_files="data/neural_train.csv")
     train_df = train_df["train"]
-    for x in train_df["stars"]:
-        train_df["stars"][x] = train_df["stars"][x] - 1
-    train_df = train_df.remove_columns(["useful", "cool", "funny"])
-    train_df = train_df.rename_column("stars", "label")
+    train_df = train_df.remove_columns(["Unnamed: 0", "useful", "cool", "funny"])
     train_df = train_df.train_test_split(test_size=0.2)
     tokenizer = AutoTokenizer.from_pretrained("distilbert-base-uncased")
     token_train = train_df.map(pre, batched=True)
@@ -43,7 +40,7 @@ if __name__ == "__main__":
     id2label = {0: "One", 1: "Two", 2: "Three", 3: "Four", 4: "Five"}
     label2id = {"One": 0, "Two": 1, "Three": 2, "Four": 3, "Five": 4}
     model = AutoModelForSequenceClassification.from_pretrained("distilbert-base-uncased", num_labels=5,
-                                                               id2label=id2label, label2id=label2id)
+                                                               )
 
     train_arg = TrainingArguments(
         output_dir="star_model",
@@ -63,7 +60,6 @@ if __name__ == "__main__":
         train_dataset=token_train["train"],
         eval_dataset=token_train["test"],
         tokenizer=tokenizer,
-        data_collator=dc,
         compute_metrics=met,
     )
 
