@@ -44,7 +44,7 @@ if __name__ == "__main__":
 
     # Read 1% of the data for fast testing.
     # TODO change this to read the whole training set when you are ready.
-    training = pd.read_csv("data/output.csv", header=0, skiprows=lambda i: i > 0 and random.random() > 0.01)
+    training = pd.read_csv("data/output.csv", header=0, skiprows=lambda i: i > 0 and random.random() > 0.10)
 
 
     # Convert to tensor
@@ -58,14 +58,15 @@ if __name__ == "__main__":
     y_test = torch.from_numpy(y_test).type(torch.LongTensor)
 
     # 1. Create NN model.
-    model = ClassifyModel().to(DEVICE)
+    model = ClassifyModel(101, 5).to(DEVICE) # Experiment 1 Different hidden units
 
     # 2. Create loss function - cross entropy loss
+
     loss_fn = torch.nn.CrossEntropyLoss()
 
     # 3. Create optimizer - stochastic gradient descent
     # lr == learning rate == 0.1
-    optimizer = torch.optim.SGD(model.parameters(), lr=0.1)
+    optimizer = torch.optim.SGD(model.parameters(), lr=0.1) # Experiment 3 Change learning rate
 
     # 4. Train NN model.
     torch.manual_seed(42)
@@ -124,7 +125,12 @@ if __name__ == "__main__":
         optimizer.step()
 
         model.eval()
+        with torch.inference_mode():
+            test_logit = model(x_test)
+            test_pred = torch.softmax(test_logit, dim=1).argmax(dim=1)
+            test_loss = loss_fn(test_logit, y_test)
+            test_acc = accuracy_function(y_true=y_test, y_pred=test_pred)
         if epoch % 10 == 0:
-            print(f"Epoch: {epoch} | Loss: {loss:.5f}, Acc: {acc:.2f}%")
+            print(f"Epoch: {epoch} | Loss: {loss:.5f}, Acc: {acc:.2f}% | Test Loss: {test_loss:.5f}, Test Acc: {test_acc:.2f}%")
     #model.load_state_dict(best_weights)
     dump(model, f"{MODEL_FILE_PREFIX_CLF}{target}.joblib")
