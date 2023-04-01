@@ -93,4 +93,3 @@ def bayesian_predict(filepath: str):
         print(f"Label: {label}")
         print(f"Mean Squared Error - MSE: {mean_squared_error(y_pred=y_pred, y_true=test[label])}")
         print(f"Mean Absolute Error - MAE: {mean_absolute_error(y_pred=y_pred, y_true=test[label])}")
-        print(f"Mean Squared Log Error - MSLE: {mean_squared_log_error(y_pred=y_pred, y_true=test[label])}")
