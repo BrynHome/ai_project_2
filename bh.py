@@ -10,18 +10,22 @@ from sklearn.metrics import mean_squared_error, classification_report, mean_abso
 
 REGRESSION_LABELS = ["funny", "useful", "cool"]
 TARGET_LABELS = ["funny", "useful", "cool", "label"]
-EXCESS_LABELS = ["__index_level_0__", "Unamed: 0"]
+EXCESS_LABELS = ["__index_level_0__", "Unnamed: 0"]
 
 
-def predict(filepath: str):
+def bh_predict(filepath: str = "data/test.csv"):
     test = pd.read_csv(filepath)
-    test = test.dropna(inplace=True)
+    test.dropna(inplace=True)
+    test["stars"] = test["stars"].apply(lambda x: int(x) - 1)
     for label in TARGET_LABELS:
-        __predict(test, label)
+        _predict(test, label)
 
 
-def __predict(test: pd.Dataframe, label: str):
-    model = pipeline(f"models/{label}_model")
+def _predict(test: pd.DataFrame, label: str):
+    m_path = f"models/bh_regress_{label}"
+    if label == "stars":
+        m_path = "models/bh_classify"
+    model = pipeline(task='text-classification', model=m_path)
     print(f"Loading test set...\n")
 
     x = test["text"].tolist()
@@ -68,8 +72,8 @@ def classify_train(train_df):
     train_df = train_df.rename_column("stars", "label")
     train_df = train_df.train_test_split(test_size=0.2)
     model_path = "distilbert-base-uncased"
-    if path.exists("models/stars_model/config.json"):
-        model_path = "models/stars_model"
+    if path.exists("./models/bh_classify"):
+        model_path = "./models/bh_classify"
     tokenizer = AutoTokenizer.from_pretrained(model_path)
 
     def pre(text):
@@ -115,8 +119,8 @@ def regression_train(train_df, label):
     train_df = train_df.rename_column(label, "label")
     train_df = train_df.train_test_split(test_size=0.2)
     model_path = "distilbert-base-uncased"
-    if path.exists(f"models/{label}_model/config.json"):
-        model_path = f"models/{label}_model"
+    if path.exists(f"models/bh_regress_{label}"):
+        model_path = f"models/bh_regress_{label}"
     tokenizer = AutoTokenizer.from_pretrained(model_path)
 
     def pre(text):
@@ -167,3 +171,5 @@ def bh_train(filepath="data/small_neural_train.csv"):
         print(f"Training {target}")
         regression_train(train_df, target)
 
+
+bh_predict()
