@@ -3,12 +3,36 @@ from transformers import AutoTokenizer, AutoModelForSequenceClassification, Data
     Trainer
 from sklearn import metrics
 from datasets import load_dataset
-import torch
+from transformers import pipeline
+import pandas as pd
+from os import path
+from sklearn.metrics import mean_squared_error, classification_report, mean_absolute_error, mean_squared_log_error
 
 REGRESSION_LABELS = ["funny", "useful", "cool"]
 TARGET_LABELS = ["funny", "useful", "cool", "label"]
+EXCESS_LABELS = ["__index_level_0__", "Unamed: 0"]
 
 
+def predict(filepath: str):
+    test = pd.read_csv(filepath)
+    test = test.dropna(inplace=True)
+    for label in TARGET_LABELS:
+        __predict(test, label)
+
+
+def __predict(test: pd.Dataframe, label: str):
+    model = pipeline(f"models/{label}_model")
+    print(f"Loading test set...\n")
+
+    x = test["text"].tolist()
+    y_pred = model(x)
+    print(f"Label: {label}")
+    if label == "stars":
+        print(f"Classification Report:\n{classification_report(y_pred=y_pred, y_true=test[label])}")
+    else:
+        print(f"Mean Squared Error - MSE: {mean_squared_error(y_pred=y_pred, y_true=test[label])}")
+        print(f"Mean Absolute Error - MAE: {mean_absolute_error(y_pred=y_pred, y_true=test[label])}")
+        print(f"Mean Squared Log Error - MSLE: {mean_squared_log_error(y_pred=y_pred, y_true=test[label])}")
 
 
 def met(pred):
@@ -41,15 +65,20 @@ def met_regress(eval_pred):
 
 def classify_train(train_df):
     train_df = train_df.remove_columns(["useful", "cool", "funny"])
+    train_df = train_df.rename_column("stars", "label")
     train_df = train_df.train_test_split(test_size=0.2)
-    tokenizer = AutoTokenizer.from_pretrained("distilbert-base-uncased")
+    model_path = "distilbert-base-uncased"
+    if path.exists("models/stars_model/config.json"):
+        model_path = "models/stars_model"
+    tokenizer = AutoTokenizer.from_pretrained(model_path)
 
     def pre(text):
         return tokenizer(text['text'], truncation=True)
+
     token_train = train_df["train"].map(pre, batched=True)
     token_val = train_df["test"].map(pre, batched=True)
     dc = DataCollatorWithPadding(tokenizer=tokenizer)
-    model = AutoModelForSequenceClassification.from_pretrained("distilbert-base-uncased", num_labels=5, )
+    model = AutoModelForSequenceClassification.from_pretrained(model_path, num_labels=5, )
 
     train_arg = TrainingArguments(
         output_dir="star_model",
@@ -79,13 +108,16 @@ def classify_train(train_df):
     trainer.save_model("models/bh_classify")
 
 
-def regression_train(train_df, label, path):
+def regression_train(train_df, label):
     for target in TARGET_LABELS:
         if target != label:
             train_df = train_df.remove_columns([target])
     train_df = train_df.rename_column(label, "label")
     train_df = train_df.train_test_split(test_size=0.2)
-    tokenizer = AutoTokenizer.from_pretrained(path)
+    model_path = "distilbert-base-uncased"
+    if path.exists(f"models/{label}_model/config.json"):
+        model_path = f"models/{label}_model"
+    tokenizer = AutoTokenizer.from_pretrained(model_path)
 
     def pre(text):
         return tokenizer(text['text'], truncation=True)
@@ -93,10 +125,10 @@ def regression_train(train_df, label, path):
     token_train = train_df["train"].map(pre, batched=True)
     token_val = train_df["test"].map(pre, batched=True)
     dc = DataCollatorWithPadding(tokenizer=tokenizer)
-    model = AutoModelForSequenceClassification.from_pretrained(path, num_labels=1)
+    model = AutoModelForSequenceClassification.from_pretrained(model_path, num_labels=1)
 
     train_arg = TrainingArguments(
-        output_dir=f"star_model_{label}",
+        output_dir=f"{label}_model",
         learning_rate=2e-5,
         per_device_train_batch_size=16,
         per_device_eval_batch_size=16,
@@ -122,10 +154,16 @@ def regression_train(train_df, label, path):
     trainer.save_model(f"models/bh_regress_{label}")
 
 
-if __name__ == "__main__":
-    train_df = load_dataset("csv", data_files="data/small_neural_train.csv")
+def bh_train(filepath="data/small_neural_train.csv"):
+    train_df = load_dataset("csv", data_files=filepath)
     train_df = train_df["train"]
-    train_df = train_df.remove_columns(["__index_level_0__"])
+    names = train_df.column_names
+    for label in EXCESS_LABELS:
+        if label in names:
+            train_df = train_df.remove_columns([label])
+    print("Training stars")
+    classify_train(train_df)
     for target in REGRESSION_LABELS:
         print(f"Training {target}")
-        regression_train(train_df, target, "distilbert-base-uncased")
+        regression_train(train_df, target)
+
