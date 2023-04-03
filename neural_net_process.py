@@ -3,13 +3,12 @@ from argparse import ArgumentParser
 
 REGRESSION_LABELS = ["funny", "useful", "cool"]
 PARSER = ArgumentParser()
-PARSER.add_argument("sample", help="Number of entries to sample from the train set.", type=int, required=False)
+PARSER.add_argument("sample", help="Number of entries to sample from the train/test set. Set to 0 for no sample", type=int)
 ARGS = PARSER.parse_args()
 
 
-
 train_df = read_csv("data/training.csv")
-if ARGS.sample:
+if ARGS.sample > 0:
 	SAMPLE_AMOUNT = ARGS.sample 
 	train_df = train_df.sample(SAMPLE_AMOUNT)
 for label in REGRESSION_LABELS:

@@ -36,6 +36,6 @@ if __name__ == '__main__':
         if ARGS.probabilistic:
             bayesian_predict(ARGS.file, feature_selection=ARGS.feature_selection)
         if ARGS.neural:
-            bh.predict(ARGS.file)
+            bh_predict(ARGS.file)
         if ARGS.other:
             sw_predict(ARGS.file)
