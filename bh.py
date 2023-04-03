@@ -1,4 +1,5 @@
 import numpy
+import torch
 from transformers import AutoTokenizer, AutoModelForSequenceClassification, DataCollatorWithPadding, TrainingArguments, \
     Trainer
 from sklearn import metrics
@@ -9,7 +10,7 @@ from os import path
 from sklearn.metrics import mean_squared_error, classification_report, mean_absolute_error, mean_squared_log_error
 
 REGRESSION_LABELS = ["funny", "useful", "cool"]
-TARGET_LABELS = ["funny", "useful", "cool", "label"]
+TARGET_LABELS = ["stars", "funny", "useful", "cool" ]
 EXCESS_LABELS = ["__index_level_0__", "Unnamed: 0"]
 
 
@@ -25,12 +26,18 @@ def _predict(test: pd.DataFrame, label: str):
     m_path = f"models/bh_regress_{label}"
     if label == "stars":
         m_path = "models/bh_classify"
-    model = pipeline(task='text-classification', model=m_path)
+    tokenizer = AutoTokenizer.from_pretrained(m_path)
+    model = AutoModelForSequenceClassification.from_pretrained(m_path)
     print(f"Loading test set...\n")
 
     x = test["text"].tolist()
-    y_pred = model(x)
+    inputs = tokenizer(x, max_length=512, truncation=True, return_tensors="pt", padding=True)
     print(f"Label: {label}")
+    with torch.no_grad():
+        logits = model(**inputs).logits
+    y_pred = []
+    for y in logits:
+        y_pred.append(logits.argmax().item())
     if label == "stars":
         print(f"Classification Report:\n{classification_report(y_pred=y_pred, y_true=test[label])}")
     else:
