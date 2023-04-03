@@ -16,6 +16,7 @@ EXCESS_LABELS = ["__index_level_0__", "Unnamed: 0"]
 def bh_predict(filepath: str = "data/test.csv"):
     test = pd.read_csv(filepath)
     test.dropna(inplace=True)
+    test = test.sample(10000)
     test["stars"] = test["stars"].apply(lambda x: int(x) - 1)
     for label in TARGET_LABELS:
         _predict(test, label)
@@ -23,20 +24,20 @@ def bh_predict(filepath: str = "data/test.csv"):
 
 def _predict(test: pd.DataFrame, label: str):
     m_path = f"models/bh_regress_{label}"
+    y_pred = []
     if label == "stars":
         m_path = "models/bh_classify"
     tokenizer = AutoTokenizer.from_pretrained(m_path)
     model = AutoModelForSequenceClassification.from_pretrained(m_path)
-    print(f"Loading test set...\n")
+    print(f"Label: {label}")
 
     x = test["text"].tolist()
-    inputs = tokenizer(x, max_length=512, truncation=True, return_tensors="pt", padding=True)
-    print(f"Label: {label}")
-    with torch.no_grad():
-        logits = model(**inputs).logits
-    y_pred = []
-    for y in logits:
-        y_pred.append(logits.argmax().item())
+    for entry in x:
+        inputs = tokenizer(entry, max_length=512, truncation=True, return_tensors="pt", padding=True)
+        with torch.no_grad():
+            logits = model(**inputs).logits
+            y_pred.append(logits.argmax().item())
+
     if label == "stars":
         print(f"Classification Report:\n{classification_report(y_pred=y_pred, y_true=test[label])}")
     else:
@@ -178,4 +179,3 @@ def bh_train(filepath="data/small_neural_train.csv"):
         regression_train(train_df, target)
 
 
-bh_predict()
