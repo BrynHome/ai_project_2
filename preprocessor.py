@@ -22,15 +22,14 @@ from sklearn.model_selection import train_test_split
 from sys import exit
 import nltk
 from nltk.corpus import stopwords
+from nltk.stem import WordNetLemmatizer
 from imblearn.under_sampling import RandomUnderSampler
 import re
 from time import perf_counter
 
 PARSER = ArgumentParser()
 PARSER.add_argument("filepath", help="The filepath to the raw CSV dataset.")
-
-TEST_PATH = "data/test.csv"
-TRAIN_PATH = "data/training.csv"
+PARSER.add_argument("-l", "--lemmatization", help="Perform lemmatization on the input data", required=False, action="store_true")
 
 STOPWORDS = set(stopwords.words("english"))
 ASCII_WORD = re.compile("[a-zA-Z_]+")
@@ -60,6 +59,12 @@ def clean_text(text: str):
     words = [word for word in words if word not in STOPWORDS]
     return " ".join(words)
 
+def lemmatize(text: str):
+    wnl = WordNetLemmatizer()
+    # tokenize all ascii words using regex.
+    words: list[str] = regex_tokenize(text)
+    words = [wnl.lemmatize(word) for word in words]
+    return " ".join(words)
 
 def undersample(X, y) -> DataFrame:
     sampler = RandomUnderSampler(random_state=42)
@@ -75,7 +80,6 @@ def make_train_test_sets(dataset: DataFrame) -> tuple[DataFrame, DataFrame]:
 
 
 if __name__ == "__main__":
-
     ARGS = PARSER.parse_args()
     START = perf_counter()
     nltk.download('stopwords')
@@ -88,11 +92,16 @@ if __name__ == "__main__":
         print(f"Could not open {ARGS.filepath}.  Exiting.")
         exit()
 
+    _lem = "_lem" if ARGS.lemmatization else ""
     print("Preprocessing dataset...")
     full = full[full["text"] != ""] # Get all rows with non-empty text fields.
     full.dropna(inplace=True) # Drop all null rows.
     full.drop_duplicates(inplace=True) # Drop all duplicates
     full["text"] = full["text"].apply(clean_text) # Clean all the text data at once.
+    if ARGS.lemmatization:
+        print("Performing Lemmatization")
+        nltk.download('wordnet')
+        full["text"] = full["text"].apply(lemmatize)
 
     # Remove non-numeric values
     for label in CLASS_LABELS:
@@ -112,13 +121,13 @@ if __name__ == "__main__":
     train, test = make_train_test_sets(full)
 
     print("Saving test set...")
-    test.to_csv(TEST_PATH, index=False)
+    test.to_csv(f"data/test{_lem}.csv", index=False)
 
     print("Undersampling training set to balance classes...")
     train = undersample(train[["text", "useful", "cool", "funny"]], train[["stars"]])
 
     print("Saving training set...")
-    train.to_csv(TRAIN_PATH, index=False)
+    train.to_csv(f"data/training{_lem}.csv", index=False)
     END = perf_counter()
     TOTAL = END-START
     print("Done.")
