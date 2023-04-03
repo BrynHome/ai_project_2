@@ -12,3 +12,4 @@ seaborn==0.12.2
 torch==2.0.0
 tqdm==4.62.3
 transformers==4.27.4
+datasets==2.11.0
