@@ -4,7 +4,6 @@ from transformers import AutoTokenizer, AutoModelForSequenceClassification, Data
     Trainer
 from sklearn import metrics
 from datasets import load_dataset
-from transformers import pipeline
 import pandas as pd
 from os import path
 from sklearn.metrics import mean_squared_error, classification_report, mean_absolute_error, mean_squared_log_error
