@@ -16,7 +16,6 @@ EXCESS_LABELS = ["__index_level_0__", "Unnamed: 0"]
 def bh_predict(filepath: str = "data/test.csv"):
     test = pd.read_csv(filepath)
     test.dropna(inplace=True)
-    test = test.sample(10000)
     test["stars"] = test["stars"].apply(lambda x: int(x) - 1)
     for label in TARGET_LABELS:
         _predict(test, label)
@@ -177,5 +176,3 @@ def bh_train(filepath="data/small_neural_train.csv"):
     for target in REGRESSION_LABELS:
         print(f"Training {target}")
         regression_train(train_df, target)
-
-
