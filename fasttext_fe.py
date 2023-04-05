@@ -12,10 +12,9 @@ nltk.download('punkt')
 PARSER = ArgumentParser()
 PARSER.add_argument("filepath", help="The filepath to the training data.")
 PARSER.add_argument("-o", "--output", help="The output filename. Output filename is output.csv by default.", default="data/output.csv")
+PARSER.add_argument("-v", "--vector-size", help="The size of the word vector, defaults to 25",dest="vector_size", default="25")
 
-WORD_VECTOR_SIZE = 25
 CLASS_LABELS = ["stars", "funny", "useful", "cool"]
-FB_MODEL_PATH = "models/cc.en.25.bin"
 
 if __name__ == "__main__":
 
@@ -25,7 +24,7 @@ if __name__ == "__main__":
         remove(ARGS.output)
 
     training_batches = read_csv(ARGS.filepath, chunksize=100000, dtype={"stars": np.float64, "funny": np.float64, "useful": np.float64, "cool": np.float64, "text": str}, encoding='utf8')
-    model = load_facebook_model(FB_MODEL_PATH)
+    model = load_facebook_model(f"models/cc.en.{int(ARGS.vector_size)}.bin")
     count = 0
 
     # 1. For each training sample, convert 'text' into a list of tokens.
@@ -40,7 +39,7 @@ if __name__ == "__main__":
             tokens = word_tokenize(sample["text"])
             word_vectors = [model.wv[word] for word in tokens]
             if not word_vectors:
-                word_vectors = [[0 for i in range(0, WORD_VECTOR_SIZE)]]
+                word_vectors = [[0 for i in range(0, int(ARGS.vector_size))]]
             mean_vectors.append(np.mean(np.array(word_vectors), axis=0))
         labels = [f"x{i+1}" for i in range(0, len(mean_vectors[0]))]
         mean_vector_dataframe = DataFrame(mean_vectors, columns=labels)

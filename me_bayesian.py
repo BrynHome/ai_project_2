@@ -3,10 +3,9 @@ import pandas
 from sklearn.feature_selection import SelectKBest, f_regression
 from sklearn.model_selection import GridSearchCV
 from sklearn.linear_model import BayesianRidge
-from sklearn.naive_bayes import GaussianNB
-from sklearn.metrics import mean_squared_error, classification_report, mean_absolute_error, mean_squared_log_error
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import mean_squared_error, classification_report, mean_absolute_error
 from sklearn.pipeline import Pipeline
-import sys
 
 MODEL_FILE_PREFIX_CLF = "./models/me_clf_"
 MODEL_FILE_PREFIX_FS = "./models/me_fs"
@@ -16,16 +15,19 @@ CLASSIFICATION_LABELS = ["stars"]
 TARGET_LABELS = ["funny", "useful", "cool", "stars"]
 
 RANDOM_STATE = 42
+MAX_ITER = 300
 
 def bayesian_train(filepath: str, feature_selection: bool = False):
 
     _fs = "_fs" if feature_selection else ""
     feature_selection_params = {
-        'selector__k': [5, 8, 10, 12, 15, 20]
+        'selector__k': [ 30, 40, 50, 60, 70]
     }
 
     classification_grid_params = {
-        'var_smoothing': [1e-14, 1e-13, 1e-11, 1e-10, 1e-9]
+        'tol': [1e-10, 1e-8, 1e-6, 1e-4, 1e-2, 1.0],
+        'C': [0.25, 0.5, 1.0, 2.5, 5.0],
+        'solver': ['lbfgs', 'saga', 'sag']
     }
 
     regressor_grid_params = {
@@ -50,7 +52,7 @@ def bayesian_train(filepath: str, feature_selection: bool = False):
         print("")
         print("Optional Feature Selection taking place")
         selector = SelectKBest(f_regression)
-        clf = GaussianNB()
+        clf = LogisticRegression(max_iter=MAX_ITER)
         pipe = Pipeline([
             ('selector', selector),
             ('classifier', clf)
@@ -79,7 +81,7 @@ def bayesian_train(filepath: str, feature_selection: bool = False):
     best_params = {}
     for target in CLASSIFICATION_LABELS:
         print(f"Classification Target: {target}")
-        gs = GridSearchCV(estimator=GaussianNB(), scoring="f1_micro", refit=True, param_grid=classification_grid_params, n_jobs=5)
+        gs = GridSearchCV(estimator=LogisticRegression(max_iter=MAX_ITER), scoring="f1_micro", refit=True, param_grid=classification_grid_params, n_jobs=5)
         gs.fit(X=training_data_subset, y=training_subset[target])
         best_params[target] = gs.best_params_
         print(f"Best f1_micro: {gs.best_score_}")
@@ -97,7 +99,7 @@ def bayesian_train(filepath: str, feature_selection: bool = False):
     print("4. Training the final classification models using the best parameters...")
     for target in CLASSIFICATION_LABELS:
         print(f"Classification Target: {target}")
-        clf = GaussianNB(**best_params[target])
+        clf = LogisticRegression(max_iter=MAX_ITER, **best_params[target])
         clf = clf.fit(X=training_data, y=training[target])
         print(f"Saving model to {MODEL_FILE_PREFIX_CLF}{target}{_fs}.joblib")
         dump(clf, f"{MODEL_FILE_PREFIX_CLF}{target}{_fs}.joblib")
@@ -131,7 +133,7 @@ def bayesian_predict(filepath: str, feature_selection: bool = False):
 
     print(f"2. Classification predictions")
     for label in CLASSIFICATION_LABELS:
-        clf: GaussianNB = load(f"{MODEL_FILE_PREFIX_CLF}{label}{_fs}.joblib")
+        clf: LogisticRegression = load(f"{MODEL_FILE_PREFIX_CLF}{label}{_fs}.joblib")
         y_pred = clf.predict(test_data)
         print(f"Label: {label}")
         print(f"Classification Report:\n{classification_report(y_pred=y_pred, y_true=test[label])}")
