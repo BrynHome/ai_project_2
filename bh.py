@@ -6,10 +6,11 @@ from sklearn import metrics
 from datasets import load_dataset
 import pandas as pd
 from os import path
+from collections import Counter
 from sklearn.metrics import mean_squared_error, classification_report, mean_absolute_error, mean_squared_log_error
 
 REGRESSION_LABELS = ["funny", "useful", "cool"]
-TARGET_LABELS = ["stars", "funny", "useful", "cool" ]
+TARGET_LABELS = ["stars", "funny", "useful", "cool"]
 EXCESS_LABELS = ["__index_level_0__", "Unnamed: 0"]
 
 
