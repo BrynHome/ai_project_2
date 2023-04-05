@@ -1,6 +1,7 @@
 from argparse import ArgumentParser
 from me_bayesian import bayesian_predict ,bayesian_train
 from sw import sw_train, sw_predict
+from bh import bh_train, bh_predict
 
 PARSER = ArgumentParser()
 PARSER.add_argument("file", help="The path to the dataset JSON file.")
@@ -28,13 +29,13 @@ if __name__ == '__main__':
         if ARGS.probabilistic:
             bayesian_train(ARGS.file, feature_selection=ARGS.feature_selection)
         if ARGS.neural:
-            pass
+            bh_train(ARGS.file)
         if ARGS.other:
             sw_train(ARGS.file)
     elif ARGS.inference:
         if ARGS.probabilistic:
             bayesian_predict(ARGS.file, feature_selection=ARGS.feature_selection)
         if ARGS.neural:
-            pass
+            bh_predict(ARGS.file)
         if ARGS.other:
             sw_predict(ARGS.file)
