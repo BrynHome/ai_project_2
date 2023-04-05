@@ -1,5 +1,6 @@
 import numpy
 import torch
+import torchvision
 from transformers import AutoTokenizer, AutoModelForSequenceClassification, DataCollatorWithPadding, TrainingArguments, \
     Trainer
 from sklearn import metrics
@@ -11,7 +12,7 @@ from sklearn.metrics import mean_squared_error, classification_report, mean_abso
 REGRESSION_LABELS = ["funny", "useful", "cool"]
 TARGET_LABELS = ["stars", "funny", "useful", "cool"]
 EXCESS_LABELS = ["__index_level_0__", "Unnamed: 0"]
-
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 def bh_predict(filepath: str = "data/test.csv"):
     test = pd.read_csv(filepath)
@@ -28,11 +29,12 @@ def _predict(test: pd.DataFrame, label: str):
         m_path = "models/bh_classify"
     tokenizer = AutoTokenizer.from_pretrained(m_path)
     model = AutoModelForSequenceClassification.from_pretrained(m_path)
+    model = model.to(device)
     print(f"Label: {label}")
 
     x = test["text"].tolist()
     for entry in x:
-        inputs = tokenizer(entry, max_length=512, truncation=True, return_tensors="pt", padding=True)
+        inputs = tokenizer(entry, max_length=512, truncation=True, return_tensors="pt", padding=True).to(device)
         with torch.no_grad():
             logits = model(**inputs).logits
             y_pred.append(logits.argmax().item())
@@ -83,13 +85,13 @@ def classify_train(train_df):
     tokenizer = AutoTokenizer.from_pretrained(model_path)
 
     def pre(text):
-        return tokenizer(text['text'], truncation=True)
+        return tokenizer(text['text'], truncation=True).to(device)
 
     token_train = train_df["train"].map(pre, batched=True)
     token_val = train_df["test"].map(pre, batched=True)
     dc = DataCollatorWithPadding(tokenizer=tokenizer)
     model = AutoModelForSequenceClassification.from_pretrained(model_path, num_labels=5, )
-
+    model = model.to(device)
     train_arg = TrainingArguments(
         output_dir="star_model",
         learning_rate=2e-5,
@@ -130,13 +132,13 @@ def regression_train(train_df, label):
     tokenizer = AutoTokenizer.from_pretrained(model_path)
 
     def pre(text):
-        return tokenizer(text['text'], truncation=True)
+        return tokenizer(text['text'], truncation=True).to(device)
 
     token_train = train_df["train"].map(pre, batched=True)
     token_val = train_df["test"].map(pre, batched=True)
     dc = DataCollatorWithPadding(tokenizer=tokenizer)
     model = AutoModelForSequenceClassification.from_pretrained(model_path, num_labels=1)
-
+    model = model.to(device)
     train_arg = TrainingArguments(
         output_dir=f"{label}_model",
         learning_rate=2e-5,
