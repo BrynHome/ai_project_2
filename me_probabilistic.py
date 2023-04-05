@@ -1,4 +1,6 @@
 from joblib import load, dump
+from os.path import exists
+from os import remove
 import pandas
 from sklearn.feature_selection import SelectKBest, f_regression
 from sklearn.model_selection import GridSearchCV
@@ -6,6 +8,8 @@ from sklearn.linear_model import BayesianRidge
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import mean_squared_error, classification_report, mean_absolute_error
 from sklearn.pipeline import Pipeline
+
+from fasttext_fe import create_ft_word_vectors, COL_TYPES
 
 MODEL_FILE_PREFIX_CLF = "./models/me_clf_"
 MODEL_FILE_PREFIX_FS = "./models/me_fs"
@@ -16,8 +20,10 @@ TARGET_LABELS = ["funny", "useful", "cool", "stars"]
 
 RANDOM_STATE = 42
 MAX_ITER = 300
+FT_VECTOR_COUNT = 75
+FT_TEST_FILENAME = f"data/ft_test_data.{FT_VECTOR_COUNT}.csv"
 
-def bayesian_train(filepath: str, feature_selection: bool = False):
+def probabilistic_train(filepath: str, feature_selection: bool = False):
 
     _fs = "_fs" if feature_selection else ""
     feature_selection_params = {
@@ -38,9 +44,9 @@ def bayesian_train(filepath: str, feature_selection: bool = False):
         'lambda_2': [1e-8, 1e-6, 1e-4],
     }
 
-    print("--- Training Probabalistic Naive Bayes Model ----")
+    print("--- Training Probabalistic Models ----")
     
-    print("1. Loading training data...")
+    print("1. Loading processed training data...")
     training = pandas.read_csv(filepath)
     training.dropna(inplace=True)
     training_subset = training.sample(n=25000,random_state=RANDOM_STATE)
@@ -112,17 +118,20 @@ def bayesian_train(filepath: str, feature_selection: bool = False):
         print(f"Saving model to {MODEL_FILE_PREFIX_RGR}{target}{_fs}.joblib")
         dump(rgr, f"{MODEL_FILE_PREFIX_RGR}{target}{_fs}.joblib")
 
-def bayesian_predict(filepath: str, feature_selection: bool = False):
+def probabilistic_predict(filepath: str, feature_selection: bool = False):
     _fs = "_fs" if feature_selection else ""
-    print("--- Predicting Probabalistic Naive Bayes Model ----")
+    print("--- Predicting Probabalistic Model ----")
     
-    print("1. Loading training data...")
-    test = pandas.read_csv(filepath)
-    test.dropna(inplace=True)
-    print(f"Loading test set...")
-    test = pandas.read_csv(filepath)
-    test.dropna(inplace=True)
+    print("1. Loading test data...")
+    data = pandas.read_csv(filepath, chunksize=100000, dtype=COL_TYPES)
 
+    if exists(FT_TEST_FILENAME):
+        remove(FT_TEST_FILENAME)
+
+    print("2. Performing FastText word vectorization")
+    create_ft_word_vectors(data, FT_TEST_FILENAME, FT_VECTOR_COUNT)
+    
+    test = pandas.read_csv(FT_TEST_FILENAME)
     test_data: pandas.DataFrame = test.drop(TARGET_LABELS, axis=1)
 
     print("Optional Feature Selection taking place")
